@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { useFeedbackStore } from "../store/feedbackStore";
-
+import assets from "../assets/assets";
+  
 function AppShell() {
   const navigate = useNavigate();
   const role = useAuthStore((state) => state.role);
@@ -19,7 +20,7 @@ function AppShell() {
       <header className="topbar">
         <div className="container topbar-content">
           <NavLink to="/transactions" className="brand">
-            <img src="/src/assets/logo.png" alt="Logo" width={100} height={100}/> 
+            <img src={assets.logo} alt="Logo" width={100} height={100}/> 
           </NavLink>
 
           <nav className="main-nav">
