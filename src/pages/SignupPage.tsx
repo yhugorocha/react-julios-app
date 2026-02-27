@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
+import assets from "../assets/assets";
 import { signupSchema, type SignupFormValues } from "../schemas/authSchemas";
 import { authService } from "../services/authService";
 import { useAuthStore } from "../store/authStore";
@@ -61,7 +62,7 @@ function SignupPage() {
     <section className="auth-page">
       <article className="auth-card">
         <div className="logo-container">
-          <img src="/src/assets/logo.png" alt="Logo do sistema" width={250} height={250}/>
+          <img src={assets.logo} alt="Logo do sistema" width={250} height={250} />
           <h1>Registre-se</h1>
         </div>
         <form className="form-grid" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -99,4 +100,3 @@ function SignupPage() {
 }
 
 export default SignupPage;
-

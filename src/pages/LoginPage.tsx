@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import assets from "../assets/assets";
 import { loginSchema, type LoginFormValues } from "../schemas/authSchemas";
 import { authService } from "../services/authService";
 import { useAuthStore } from "../store/authStore";
@@ -49,7 +50,7 @@ function LoginPage() {
     <section className="auth-page">
       <article className="auth-card">
         <div className="logo-container">
-          <img src="/src/assets/logo.png" alt="Logo do sistema" width={250} height={250}/>
+          <img src={assets.logo} alt="Logo do sistema" width={250} height={250} />
           <h1>Entrar</h1>
         </div>
         <form className="form-grid" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -81,4 +82,3 @@ function LoginPage() {
 }
 
 export default LoginPage;
-
