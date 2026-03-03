@@ -27,13 +27,15 @@ function SignupPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
   const onSubmit = async (values: SignupFormValues) => {
     setFormError(null);
     try {
-      const session = await authService.signup(values);
+      const { confirmPassword: _confirmPassword, ...payload } = values;
+      const session = await authService.signup(payload);
       if (session) {
         setSession(session);
         pushSuccess("Conta criada com sucesso.");
@@ -41,7 +43,7 @@ function SignupPage() {
         return;
       }
       pushSuccess("Conta criada com sucesso. Faça login para continuar.");
-      reset({ name: "", email: "", password: "" });
+      reset({ name: "", email: "", password: "", confirmPassword: "" });
       navigate("/login", { replace: true });
     } catch (error) {
       const fieldErrors = mapFieldErrors(error);
@@ -53,6 +55,9 @@ function SignupPage() {
       }
       if (fieldErrors.password) {
         setError("password", { message: fieldErrors.password });
+      }
+      if (fieldErrors.confirmPassword) {
+        setError("confirmPassword", { message: fieldErrors.confirmPassword });
       }
       setFormError(getFriendlyErrorMessage(error));
     }
@@ -82,6 +87,12 @@ function SignupPage() {
             <span>Senha</span>
             <input type="password" placeholder="Mínimo 8 caracteres" {...register("password")} />
             {errors.password && <small className="field-error">{errors.password.message}</small>}
+          </label>
+
+          <label className="form-field">
+            <span>Confirmar senha</span>
+            <input type="password" placeholder="Repita sua senha" {...register("confirmPassword")} />
+            {errors.confirmPassword && <small className="field-error">{errors.confirmPassword.message}</small>}
           </label>
 
           {formError && <p className="form-error">{formError}</p>}

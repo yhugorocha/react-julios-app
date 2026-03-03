@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useForm } from "react-hook-form";
 import { transactionSchema, type TransactionFormValues } from "../schemas/transactionSchemas";
 import { categoriesService } from "../services/categoriesService";
@@ -11,8 +12,8 @@ import { mapFieldErrors } from "../utils/error";
 
 const PIE_COLORS = [
   
-  "#3b82f6",
   "#f38b2a",
+  "#3b82f6",
   "#ec4899",
   "#ef4444",
   "#8b5cf6",
@@ -133,6 +134,9 @@ function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"category" | "detailed">("detailed");
+  const [deletingTransactionId, setDeletingTransactionId] = useState<number | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const pushError = useFeedbackStore((state) => state.pushError);
   const pushSuccess = useFeedbackStore((state) => state.pushSuccess);
 
   const {
@@ -158,7 +162,7 @@ function TransactionsPage() {
           categoriesService.listCategories(),
           transactionsService.listTransactions(),
         ]);
-        setCategories(categoriesData);
+        setCategories(categoriesData.map((category) => ({ ...category, active: category.active ?? true })));
         setTransactions(transactionsData);
       } finally {
         setIsLoading(false);
@@ -169,6 +173,11 @@ function TransactionsPage() {
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  );
+
+  const activeCategories = useMemo(
+    () => categories.filter((category) => category.active !== false),
     [categories],
   );
 
@@ -210,7 +219,7 @@ function TransactionsPage() {
       };
       const created = await transactionsService.createTransaction(payload);
       setTransactions((current) => [created, ...current]);
-      pushSuccess("Transacao criada com sucesso.");
+      pushSuccess("Transa\u00e7\u00e3o criada com sucesso.");
       reset({ description: "", amount: 0, date: getToday(), categoryId: values.categoryId });
     } catch (error) {
       const fieldErrors = mapFieldErrors(error);
@@ -229,15 +238,44 @@ function TransactionsPage() {
     }
   };
 
+  const openDeleteTransactionDialog = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+  };
+
+  const closeDeleteTransactionDialog = () => {
+    if (deletingTransactionId) {
+      return;
+    }
+    setTransactionToDelete(null);
+  };
+
+  const onConfirmDeleteTransaction = async () => {
+    if (!transactionToDelete) {
+      return;
+    }
+
+    setDeletingTransactionId(transactionToDelete.id);
+    try {
+      await transactionsService.deleteTransaction(transactionToDelete.id, { skipGlobalError: true });
+      setTransactions((current) => current.filter((item) => item.id !== transactionToDelete.id));
+      pushSuccess("Transa\u00e7\u00e3o exclu\u00edda com sucesso.");
+      setTransactionToDelete(null);
+    } catch {
+      pushError("N\u00e3o foi poss\u00edvel excluir a transa\u00e7\u00e3o.");
+    } finally {
+      setDeletingTransactionId(null);
+    }
+  };
+
   return (
     <section className="page-grid">
       <article className="panel">
-        <h1>Novo lancamento</h1>
+        <h1>Novo lançamento</h1>
         <p className="subtitle">Acompanhe seus gastos e receitas de forma simples.</p>
 
         <form className="form-grid" onSubmit={handleSubmit(onSubmit)} noValidate>
           <label className="form-field">
-            <span>Descricao</span>
+            <span>Descrição</span>
             <input type="text" placeholder="Ex: Compra mercado" {...register("description")} />
             {errors.description && <small className="field-error">{errors.description.message}</small>}
           </label>
@@ -258,7 +296,7 @@ function TransactionsPage() {
             <span>Categoria</span>
             <select {...register("categoryId")}>
               <option value="">Selecione</option>
-              {categories.map((category) => (
+              {activeCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name} ({category.type === "INCOME" ? "Receita" : "Despesa"})
                 </option>
@@ -268,20 +306,20 @@ function TransactionsPage() {
           </label>
           </div>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? "Salvando..." : "Registrar lancamento"}
+            {isSubmitting ? "Salvando..." : "Registrar lançamento"}
           </button>
         </form>
       </article>
 
       <article className="panel">
-        <h2>Lancamentos</h2>
+        <h2>Lançamentos</h2>
         {isLoading ? (
-          <p>Carregando lancamentos...</p>
+          <p>Carregando lançamentos...</p>
         ) : transactions.length === 0 ? (
-          <p>Nenhum lancamento cadastrado.</p>
+          <p>Nenhum lançamento cadastrado.</p>
         ) : (
           <>
-            <div className="tab-switcher" role="tablist" aria-label="Visualizacao de lancamentos">
+            <div className="tab-switcher" role="tablist" aria-label="Visualização de lançamentos">
               <button
                 type="button"
                 role="tab"
@@ -310,7 +348,7 @@ function TransactionsPage() {
                     <p className="subtitle">Nenhuma receita cadastrada.</p>
                   ) : (
                     <div className="category-overview">
-                      <section className="pie-card" aria-label="Grafico pizza de receitas por categoria">
+                      <section className="pie-card" aria-label="Gráfico de pizza de receitas por categoria">
                         <div className="pie-chart" style={{ background: incomePieChartBackground }}>
                           <small>Total receitas</small>
                           <strong>{formatCurrency(incomeTotalAmount)}</strong>
@@ -334,7 +372,7 @@ function TransactionsPage() {
                               <th>Categoria</th>
                               <th>Qtd.</th>
                               <th>Total</th>
-                              <th>Participacao</th>
+                              <th>Participação</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -359,7 +397,7 @@ function TransactionsPage() {
                     <p className="subtitle">Nenhuma despesa cadastrada.</p>
                   ) : (
                     <div className="category-overview">
-                      <section className="pie-card" aria-label="Grafico pizza de despesas por categoria">
+                      <section className="pie-card" aria-label="Gráfico de pizza de despesas por categoria">
                         <div className="pie-chart" style={{ background: expensePieChartBackground }}>
                           <small>Total despesas</small>
                           <strong>{formatCurrency(expenseTotalAmount)}</strong>
@@ -383,7 +421,7 @@ function TransactionsPage() {
                               <th>Categoria</th>
                               <th>Qtd.</th>
                               <th>Total</th>
-                              <th>Participacao</th>
+                              <th>Participação</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -407,10 +445,11 @@ function TransactionsPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Descricao</th>
+                      <th>Descrição</th>
                       <th>Valor</th>
                       <th>Data</th>
                       <th>Categoria</th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -422,6 +461,18 @@ function TransactionsPage() {
                           <td>{formatCurrency(transaction.amount)}</td>
                           <td>{formatDate(transaction.date)}</td>
                           <td>{transaction.categoryName ?? category?.name ?? `#${transaction.categoryId}`}</td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-danger-outline"
+                                onClick={() => openDeleteTransactionDialog(transaction)}
+                                disabled={deletingTransactionId === transaction.id}
+                              >
+                                {deletingTransactionId === transaction.id ? "Excluindo..." : "Excluir"}
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -432,6 +483,21 @@ function TransactionsPage() {
           </>
         )}
       </article>
+
+      <ConfirmDialog
+        isOpen={Boolean(transactionToDelete)}
+        title="Excluir lançamento?"
+        description={
+          transactionToDelete
+            ? `Tem certeza que deseja excluir o lançamento "${transactionToDelete.description}"?`
+            : ""
+        }
+        confirmLabel="Excluir"
+        tone="danger"
+        isLoading={Boolean(deletingTransactionId)}
+        onCancel={closeDeleteTransactionDialog}
+        onConfirm={() => void onConfirmDeleteTransaction()}
+      />
     </section>
   );
 }

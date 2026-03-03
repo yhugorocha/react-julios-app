@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell";
 import GlobalAlerts from "./components/GlobalAlerts";
+import AppVersion from "./components/AppVersion";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import RoleGuard from "./components/RoleGuard";
@@ -16,6 +17,7 @@ function App() {
   return (
     <>
       <ThemeToggle />
+      <AppVersion />
       <GlobalAlerts />
       <Routes>
         <Route

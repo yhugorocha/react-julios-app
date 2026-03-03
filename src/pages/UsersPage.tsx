@@ -24,6 +24,7 @@ function UsersPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
       role: "USER",
     },
   });
@@ -43,10 +44,11 @@ function UsersPage() {
 
   const onSubmit = async (values: UserFormValues) => {
     try {
-      const created = await usersService.createUser(values);
+      const { confirmPassword: _confirmPassword, ...payload } = values;
+      const created = await usersService.createUser(payload);
       setUsers((current) => [created, ...current]);
       pushSuccess("Usuário criado com sucesso.");
-      reset({ name: "", email: "", password: "", role: values.role });
+      reset({ name: "", email: "", password: "", confirmPassword: "", role: values.role });
     } catch (error) {
       const fieldErrors = mapFieldErrors(error);
       if (fieldErrors.name) {
@@ -57,6 +59,9 @@ function UsersPage() {
       }
       if (fieldErrors.password) {
         setError("password", { message: fieldErrors.password });
+      }
+      if (fieldErrors.confirmPassword) {
+        setError("confirmPassword", { message: fieldErrors.confirmPassword });
       }
       if (fieldErrors.role) {
         setError("role", { message: fieldErrors.role });
@@ -90,6 +95,13 @@ function UsersPage() {
               {errors.password && <small className="field-error">{errors.password.message}</small>}
             </label>
 
+            <label className="form-field">
+              <span>Confirmar senha</span>
+              <input type="password" {...register("confirmPassword")} />
+              {errors.confirmPassword && <small className="field-error">{errors.confirmPassword.message}</small>}
+            </label>
+          </div>
+          <div className="form-row">
             <label className="form-field">
               <span>Perfil</span>
               <select {...register("role")}>
@@ -139,4 +151,3 @@ function UsersPage() {
 }
 
 export default UsersPage;
-

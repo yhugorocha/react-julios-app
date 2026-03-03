@@ -278,6 +278,12 @@ select:focus {
   background: var(--outline-bg);
 }
 
+.btn-danger-outline {
+  color: var(--danger);
+  border: 1px solid #efc4c4;
+  background: var(--danger-soft);
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -388,6 +394,19 @@ table {
   min-width: 560px;
 }
 
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.table-actions .btn {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
 th,
 td {
   padding: 0.78rem 0.62rem;
@@ -425,6 +444,16 @@ th {
 .chip-expense {
   color: #d77e4e;
   background: rgba(215, 126, 78, 0.18);
+}
+
+.chip-active {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.chip-inactive {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .auth-page {
@@ -506,6 +535,45 @@ th {
   color: inherit;
 }
 
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  background: rgba(12, 20, 17, 0.48);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.confirm-dialog {
+  width: min(460px, 100%);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface));
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-family: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .theme-toggle {
   position: fixed;
   right: 1rem;
@@ -523,10 +591,34 @@ th {
   box-shadow: var(--shadow);
 }
 
+.app-version {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 100;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-muted);
+  border-radius: 999px;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+
 @media (hover: hover) {
   .theme-toggle:hover {
     border-color: var(--accent);
     color: var(--accent-strong);
+  }
+
+  .btn-danger-outline:hover:not(:disabled) {
+    border-color: #e5adad;
+    color: #9f2f2f;
   }
 }
 
@@ -573,5 +665,13 @@ th {
     bottom: 0.8rem;
     min-height: 2.35rem;
     font-size: 0.88rem;
+  }
+
+  .app-version {
+    left: 0.8rem;
+    bottom: 0.8rem;
+    min-height: 2.35rem;
+    font-size: 0.76rem;
+    padding-inline: 0.75rem;
   }
 }
