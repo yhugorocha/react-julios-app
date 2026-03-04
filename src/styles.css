@@ -30,6 +30,10 @@
   --tab-bg: #e8f2ee;
   --tab-active-bg: #ffffff;
   --pie-card-line: #dce7e2;
+  --summary-income-bg: #eef9f4;
+  --summary-income-border: #b9e6d4;
+  --summary-expense-bg: #fff3f3;
+  --summary-expense-border: #f3d4d4;
   --shadow: 0 12px 40px -22px rgba(9, 27, 21, 0.4);
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
 }
@@ -64,6 +68,10 @@
   --tab-bg: #173329;
   --tab-active-bg: #203b31;
   --pie-card-line: #2e4a40;
+  --summary-income-bg: #1c342c;
+  --summary-income-border: #2e5b4d;
+  --summary-expense-bg: #382326;
+  --summary-expense-border: #614146;
   --shadow: 0 14px 40px -24px rgba(0, 0, 0, 0.8);
 }
 
@@ -197,6 +205,110 @@ a {
 .panel h2 {
   margin: 0;
   font-family: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+}
+
+.transactions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.95rem;
+}
+
+.month-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.month-button {
+  min-height: 2.35rem;
+  padding-inline: 0.75rem;
+}
+
+.month-label {
+  margin: 0;
+  min-width: 8.9rem;
+  text-align: center;
+  font-family: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--accent-strong);
+}
+
+.month-state {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: start;
+}
+
+.month-state p {
+  margin: 0;
+  color: var(--danger);
+}
+
+.month-totals-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 1rem;
+}
+
+.month-total-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.month-total-card small {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.month-total-card strong {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.month-total-card-income {
+  border-color: var(--summary-income-border);
+  background: linear-gradient(180deg, var(--surface), var(--summary-income-bg));
+}
+
+.month-total-card-expense {
+  border-color: var(--summary-expense-border);
+  background: linear-gradient(180deg, var(--surface), var(--summary-expense-bg));
+}
+
+.month-total-card-expense strong {
+  color: var(--danger);
+}
+
+.month-total-card-balance-positive {
+  border-color: var(--summary-income-border);
+  background: linear-gradient(180deg, var(--surface), var(--summary-income-bg));
+}
+
+.month-total-card-balance-positive strong {
+  color: var(--success);
+}
+
+.month-total-card-balance-negative {
+  border-color: var(--summary-expense-border);
+  background: linear-gradient(180deg, var(--surface), var(--summary-expense-bg));
+}
+
+.month-total-card-balance-negative strong {
+  color: var(--danger);
 }
 
 .subtitle {
@@ -658,6 +770,32 @@ th {
     width: 100%;
     text-align: left;
     border-radius: 10px;
+  }
+
+  .month-navigation {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .month-button {
+    width: 100%;
+  }
+
+  .month-label {
+    min-width: 0;
+    min-height: 2.35rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+  }
+
+  .month-totals-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .theme-toggle {

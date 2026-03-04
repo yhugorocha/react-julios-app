@@ -1,7 +1,8 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import ConfirmDialog from "../components/ConfirmDialog";
+﻿import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "react-router-dom";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { transactionSchema, type TransactionFormValues } from "../schemas/transactionSchemas";
 import { categoriesService } from "../services/categoriesService";
 import { transactionsService } from "../services/transactionsService";
@@ -11,7 +12,6 @@ import type { Transaction } from "../types/transaction";
 import { mapFieldErrors } from "../utils/error";
 
 const PIE_COLORS = [
-  
   "#f38b2a",
   "#3b82f6",
   "#ec4899",
@@ -21,6 +21,8 @@ const PIE_COLORS = [
   "#84cc16",
   "#117864",
 ];
+
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 type CategorySummary = {
   categoryId: string;
@@ -56,6 +58,44 @@ function formatDate(raw: string) {
 
 function getToday() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentMonth() {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function normalizeMonth(month: string | null) {
+  if (!month) {
+    return null;
+  }
+  return MONTH_PATTERN.test(month) ? month : null;
+}
+
+function shiftMonth(month: string, amount: number) {
+  const normalizedMonth = normalizeMonth(month);
+  if (!normalizedMonth) {
+    return getCurrentMonth();
+  }
+
+  const [yearPart, monthPart] = normalizedMonth.split("-");
+  const date = new Date(Number(yearPart), Number(monthPart) - 1, 1);
+  date.setMonth(date.getMonth() + amount);
+  const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${nextMonth}`;
+}
+
+function formatMonthLabel(month: string) {
+  const normalizedMonth = normalizeMonth(month);
+  if (!normalizedMonth) {
+    return month;
+  }
+
+  const [yearPart, monthPart] = normalizedMonth.split("-");
+  const date = new Date(Number(yearPart), Number(monthPart) - 1, 1);
+  const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(date);
+  return `${monthName}/${yearPart}`;
 }
 
 function buildCategorySummary(
@@ -130,12 +170,16 @@ function buildPieChartBackground(summary: CategorySummary[]) {
 }
 
 function TransactionsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [transactionsLoadError, setTransactionsLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"category" | "detailed">("detailed");
   const [deletingTransactionId, setDeletingTransactionId] = useState<number | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(() => normalizeMonth(searchParams.get("month")) ?? getCurrentMonth());
   const pushError = useFeedbackStore((state) => state.pushError);
   const pushSuccess = useFeedbackStore((state) => state.pushSuccess);
 
@@ -156,20 +200,49 @@ function TransactionsPage() {
   });
 
   useEffect(() => {
-    const loadData = async () => {
+    const monthFromQuery = normalizeMonth(searchParams.get("month"));
+    const monthToUse = monthFromQuery ?? getCurrentMonth();
+
+    if (!monthFromQuery) {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.set("month", monthToUse);
+      setSearchParams(nextSearchParams, { replace: true });
+    }
+
+    setSelectedMonth((current) => (current === monthToUse ? current : monthToUse));
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
       try {
-        const [categoriesData, transactionsData] = await Promise.all([
-          categoriesService.listCategories(),
-          transactionsService.listTransactions(),
-        ]);
+        const categoriesData = await categoriesService.listCategories();
         setCategories(categoriesData.map((category) => ({ ...category, active: category.active ?? true })));
-        setTransactions(transactionsData);
       } finally {
-        setIsLoading(false);
+        setIsCategoriesLoading(false);
       }
     };
-    void loadData();
+
+    void loadCategories();
   }, []);
+
+  const loadTransactions = useCallback(async (month: string) => {
+    setIsTransactionsLoading(true);
+    setTransactionsLoadError(null);
+
+    try {
+      const transactionsData = await transactionsService.listTransactions(month, { skipGlobalError: true });
+      setTransactions(transactionsData);
+    } catch {
+      setTransactions([]);
+      setTransactionsLoadError("Não foi possível carregar os lançamentos do mês selecionado.");
+    } finally {
+      setIsTransactionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadTransactions(selectedMonth);
+  }, [loadTransactions, selectedMonth]);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -211,16 +284,33 @@ function TransactionsPage() {
     [expenseSummary],
   );
 
+  const monthBalance = useMemo(
+    () => incomeTotalAmount - expenseTotalAmount,
+    [expenseTotalAmount, incomeTotalAmount],
+  );
+
+  const selectedMonthLabel = useMemo(
+    () => formatMonthLabel(selectedMonth),
+    [selectedMonth],
+  );
+
+  const updateSelectedMonth = (nextMonth: string) => {
+    setSelectedMonth(nextMonth);
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set("month", nextMonth);
+    setSearchParams(nextSearchParams);
+  };
+
   const onSubmit = async (values: TransactionFormValues) => {
     try {
       const payload = {
         ...values,
         amount: Number(values.amount),
       };
-      const created = await transactionsService.createTransaction(payload);
-      setTransactions((current) => [created, ...current]);
-      pushSuccess("Transa\u00e7\u00e3o criada com sucesso.");
+      await transactionsService.createTransaction(payload);
+      pushSuccess("Transação criada com sucesso.");
       reset({ description: "", amount: 0, date: getToday(), categoryId: values.categoryId });
+      await loadTransactions(selectedMonth);
     } catch (error) {
       const fieldErrors = mapFieldErrors(error);
       if (fieldErrors.description) {
@@ -258,10 +348,10 @@ function TransactionsPage() {
     try {
       await transactionsService.deleteTransaction(transactionToDelete.id, { skipGlobalError: true });
       setTransactions((current) => current.filter((item) => item.id !== transactionToDelete.id));
-      pushSuccess("Transa\u00e7\u00e3o exclu\u00edda com sucesso.");
+      pushSuccess("Transação excluída com sucesso.");
       setTransactionToDelete(null);
     } catch {
-      pushError("N\u00e3o foi poss\u00edvel excluir a transa\u00e7\u00e3o.");
+      pushError("Não foi possível excluir a transação.");
     } finally {
       setDeletingTransactionId(null);
     }
@@ -293,17 +383,17 @@ function TransactionsPage() {
               {errors.date && <small className="field-error">{errors.date.message}</small>}
             </label>
             <label className="form-field">
-            <span>Categoria</span>
-            <select {...register("categoryId")}>
-              <option value="">Selecione</option>
-              {activeCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name} ({category.type === "INCOME" ? "Receita" : "Despesa"})
-                </option>
-              ))}
-            </select>
-            {errors.categoryId && <small className="field-error">{errors.categoryId.message}</small>}
-          </label>
+              <span>Categoria</span>
+              <select {...register("categoryId")} disabled={isCategoriesLoading}>
+                <option value="">{isCategoriesLoading ? "Carregando categorias..." : "Selecione"}</option>
+                {activeCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name} ({category.type === "INCOME" ? "Receita" : "Despesa"})
+                  </option>
+                ))}
+              </select>
+              {errors.categoryId && <small className="field-error">{errors.categoryId.message}</small>}
+            </label>
           </div>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
             {isSubmitting ? "Salvando..." : "Registrar lançamento"}
@@ -312,11 +402,46 @@ function TransactionsPage() {
       </article>
 
       <article className="panel">
-        <h2>Lançamentos</h2>
-        {isLoading ? (
+        <div className="transactions-header">
+          <h2>Lançamentos</h2>
+          <div className="month-navigation" aria-label="Navegação por mês">
+            <button
+              type="button"
+              className="btn btn-outline month-button"
+              onClick={() => updateSelectedMonth(shiftMonth(selectedMonth, -1))}
+              aria-label="Mês anterior"
+            >
+              Anterior
+            </button>
+            <p className="month-label" aria-live="polite">
+              {selectedMonthLabel}
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline month-button"
+              onClick={() => updateSelectedMonth(shiftMonth(selectedMonth, 1))}
+              aria-label="Próximo mês"
+            >
+              Próximo
+            </button>
+          </div>
+        </div>
+
+        {isTransactionsLoading ? (
           <p>Carregando lançamentos...</p>
+        ) : transactionsLoadError ? (
+          <div className="month-state">
+            <p>{transactionsLoadError}</p>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => void loadTransactions(selectedMonth)}
+            >
+              Tentar novamente
+            </button>
+          </div>
         ) : transactions.length === 0 ? (
-          <p>Nenhum lançamento cadastrado.</p>
+          <p>Nenhum lançamento cadastrado em {selectedMonthLabel}.</p>
         ) : (
           <>
             <div className="tab-switcher" role="tablist" aria-label="Visualização de lançamentos">
@@ -441,44 +566,67 @@ function TransactionsPage() {
                 </section>
               </div>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Descrição</th>
-                      <th>Valor</th>
-                      <th>Data</th>
-                      <th>Categoria</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((transaction) => {
-                      const category = categoriesById.get(transaction.categoryId);
-                      return (
-                        <tr key={transaction.id}>
-                          <td>{transaction.description}</td>
-                          <td>{formatCurrency(transaction.amount)}</td>
-                          <td>{formatDate(transaction.date)}</td>
-                          <td>{transaction.categoryName ?? category?.name ?? `#${transaction.categoryId}`}</td>
-                          <td>
-                            <div className="table-actions">
-                              <button
-                                type="button"
-                                className="btn btn-outline btn-danger-outline"
-                                onClick={() => openDeleteTransactionDialog(transaction)}
-                                disabled={deletingTransactionId === transaction.id}
-                              >
-                                {deletingTransactionId === transaction.id ? "Excluindo..." : "Excluir"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="month-totals-grid" aria-label="Resumo do mês selecionado">
+                  <article className="month-total-card month-total-card-income">
+                    <small>Receitas</small>
+                    <strong>{formatCurrency(incomeTotalAmount)}</strong>
+                  </article>
+                  <article className="month-total-card month-total-card-expense">
+                    <small>Despesas</small>
+                    <strong>{formatCurrency(expenseTotalAmount)}</strong>
+                  </article>
+                  <article
+                    className={
+                      monthBalance >= 0
+                        ? "month-total-card month-total-card-balance-positive"
+                        : "month-total-card month-total-card-balance-negative"
+                    }
+                  >
+                    <small>Saldo</small>
+                    <strong>{formatCurrency(monthBalance)}</strong>
+                  </article>
+                </div>
+
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Data</th>
+                        <th>Categoria</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.map((transaction) => {
+                        const category = categoriesById.get(transaction.categoryId);
+                        return (
+                          <tr key={transaction.id}>
+                            <td>{transaction.description}</td>
+                            <td>{formatCurrency(transaction.amount)}</td>
+                            <td>{formatDate(transaction.date)}</td>
+                            <td>{transaction.categoryName ?? category?.name ?? `#${transaction.categoryId}`}</td>
+                            <td>
+                              <div className="table-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-outline btn-danger-outline"
+                                  onClick={() => openDeleteTransactionDialog(transaction)}
+                                  disabled={deletingTransactionId === transaction.id}
+                                >
+                                  {deletingTransactionId === transaction.id ? "Excluindo..." : "Excluir"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </>
         )}
